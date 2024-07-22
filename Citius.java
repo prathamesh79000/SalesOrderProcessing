@@ -1,17 +1,26 @@
 package practise.CitiusTech;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
+class EmailAlreadyExistsException extends RuntimeException{
+    EmailAlreadyExistsException(String errorMessage){
+        super(errorMessage);
+    }
+}
+
+class CustomerNotFoundException extends RuntimeException{
+    CustomerNotFoundException(String errorMessage){
+        super(errorMessage);
+    }
+}
 class Customer1 {
-    int customerId;
-    String customerPassword;
-    double credit;
-    String email;
-    private static final List<Customer1> customerList = new ArrayList<Customer1>();
+    private final int customerId;
+    private String customerPassword;
+    private double credit;
+    private final String email;
+    private static ArrayList<Customer1> customerList = new ArrayList<Customer1>();
 
     public Customer1(int customerId, String customerPassword, double credit, String email) {
         this.customerId = customerId;
@@ -28,6 +37,8 @@ class Customer1 {
         for (Customer1 customer : customerList) {
             if (customer.getEmail().equalsIgnoreCase(email)) {
                 return customer;
+            } else {
+                throw new EmailAlreadyExistsException("Email already exists");
             }
         }
         return null;
@@ -37,13 +48,15 @@ class Customer1 {
         for (Customer1 customer : customerList) {
             if (customer.getCustomerId() == customerId) {
                 return customer;
+            } else {
+                throw new CustomerNotFoundException("User does not exists");
             }
         }
         return null;
     }
 
     public static int generateCustomerId() {
-        return customerList.size() + 101;
+        return customerList.size() + 1001;
     }
 
     public double getCredit() {
@@ -70,11 +83,11 @@ class Customer1 {
 }
 
 class Product1 {
-    int productNumber;
+    final int productNumber;
     double productPrice;
-    int productStock;
+    private int productStock;
     String orderName;
-    private static final List<Product1> productList = new ArrayList<Product1>();
+    private static ArrayList<Product1> productList = new ArrayList<Product1>();
 
     public Product1(int productNumber, String orderName, double productPrice, int productStock) {
         this.productNumber = productNumber;
@@ -106,6 +119,7 @@ class Product1 {
         } else {
             throw new IllegalArgumentException("Insufficient Quantity");
         }
+
     }
 
     public void displayDetails() {
@@ -123,10 +137,20 @@ class Product1 {
             System.out.println("------------------------------------");
         }
     }
+
+    public static Product1 findProductByName(String productName) {
+        for (Product1 product : productList) {
+            if (product.getOrderName().equalsIgnoreCase(productName)) {
+                return product;
+            }
+        }
+        return null;
+    }
+
 }
 
 class Order1 {
-    private static int nextOrderNumber = 100; // Starting order number, can be any initial value
+    private static int nextOrderNumber = 100;
     private final int orderNumber;
     Date date;
     double totalCost;
@@ -141,17 +165,29 @@ class Order1 {
         return invoice;
     }
 
-    public void placeOrder(Customer1 cust, Product1 prd, int quantity) {
-        totalCost = quantity * prd.getProductPrice();
-        if (cust.getCredit() >= totalCost && prd.getProductStock() >= quantity) {
-            prd.updateStock(quantity);
+    public boolean placeOrder(Customer1 cust, String productName, int quantity) {
+        Product1 product = Product1.findProductByName(productName);
+        if (product == null) {
+            System.out.println("Product not found");
+            return false;
+        }
+
+        totalCost = quantity * product.getProductPrice();
+
+        if (cust.getCredit() >= totalCost && product.getProductStock() >= quantity) {
+            product.updateStock(quantity);
             cust.updateCredit(totalCost);
-            System.out.println("Order placed successfully!");
-            invoice = new Invoice1(orderNumber, new Date(), cust, prd, quantity, totalCost);
+
+            invoice = new Invoice1(orderNumber, new Date(), cust, product, quantity, totalCost);
+            invoice.createInvoice();
+
+            return true;
         } else {
-            System.out.println("Order Unsuccessful");
+            System.out.println("Order Unsuccessful: Insufficient funds or stock.");
+            return false;
         }
     }
+
 }
 
 class Invoice1 {
@@ -161,7 +197,7 @@ class Invoice1 {
     private Product1 prd;
     private int quantity;
     private double totalAmount;
-    private static final List<Invoice1> order1List = new ArrayList<Invoice1>();
+    private static ArrayList<Invoice1> order1List = new ArrayList<Invoice1>();
 
     public Invoice1() {
     }
@@ -176,7 +212,7 @@ class Invoice1 {
         order1List.add(this);
     }
 
-    public void generateInvoice() {
+    public void createInvoice() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         System.out.println("------------------------------------");
         System.out.println("Invoice Details:");
@@ -190,13 +226,14 @@ class Invoice1 {
         System.out.println("Quantity Ordered: " + quantity);
         System.out.println("Total Amount: " + totalAmount);
         System.out.println("------------------------------------");
+
     }
 
     public static void displayAllInvoices() {
         System.out.println("Below are all the invoices of all successful orders: ");
         for (Invoice1 invoice : order1List) {
             System.out.println("------------------------------------");
-            invoice.generateInvoice();
+            invoice.createInvoice();
             System.out.println("------------------------------------");
         }
     }
@@ -209,136 +246,139 @@ class Citius {
         // Adding some initial products
         Product1 prd1 = new Product1(1, "Apple", 200, 50);
         Product1 prd2 = new Product1(2, "Mango", 300, 150);
+        try{
+            int userChoice;
+            Order1 order = null;
+            while (true) {
+                System.out.println("------------------------------------");
+                System.out.println("1. Signup");
+                System.out.println("2. Login");
+                System.out.println("3. Available products");
+                System.out.println("0. Exit");
+                System.out.println("Enter your choice: ");
+                userChoice = sc.nextInt();
+                sc.nextLine();
 
-        int userChoice;
-        Order1 order = null; // Initialize order variable outside the loop
+                switch (userChoice) {
+                    case 1:
+                        System.out.println("Signup");
+                        System.out.print("Enter your email address: ");
 
-        while (true) {
-            System.out.println("------------------------------------");
-            System.out.println("1. Signup");
-            System.out.println("2. Login");
-            System.out.println("0. Exit");
-            System.out.println("Enter your choice: ");
-            userChoice = sc.nextInt();
-            sc.nextLine();
+                        String newEmail = sc.nextLine();
 
-            switch (userChoice) {
-                case 1:
-                    System.out.println("Signup");
-                    System.out.print("Enter your email address: ");
-                    String newEmail = sc.nextLine();
+                        if (!newEmail.endsWith("@gmail.com")) {
+                            System.out.println("Invalid Email Address, Please Check Again!!");
+                            break;
+                        }
 
-                    if (Customer1.getCustomerByEmail(newEmail) != null) {
-                        System.out.println("Email already registered.");
+                        if (Customer1.getCustomerByEmail(newEmail) != null) {
+                            System.out.println("Email already registered.");
+                            break;
+                        }
+
+                        System.out.print("Enter your password: ");
+                        String newPassword = sc.nextLine();
+                        int newCustomerId = Customer1.generateCustomerId();
+                        Customer1 newCustomer = new Customer1(newCustomerId, newPassword, 2000, newEmail);
+                        Customer1.addCustomer(newCustomer);
+                        System.out.println("Signup successful! Your Customer ID is: " + newCustomerId);
                         break;
-                    }
 
-                    System.out.print("Enter your password: ");
-                    String newPassword = sc.nextLine();
+                    case 2:
+                        System.out.println("Login");
+                        System.out.print("Enter your customer ID: ");
+                        int customerId = sc.nextInt();
+                        sc.nextLine();
 
-                    int newCustomerId = Customer1.generateCustomerId();
-                    Customer1 newCustomer = new Customer1(newCustomerId, newPassword, 2000, newEmail);
-                    Customer1.addCustomer(newCustomer);
+                        System.out.print("Enter your password: ");
+                        String inputPassword = sc.nextLine();
 
-                    System.out.println("Signup successful! Your Customer ID is: " + newCustomerId);
-                    break;
+                        Customer1 customer = Customer1.getCustomerById(customerId);
 
-                case 2:
-                    System.out.println("Login");
-                    System.out.print("Enter your customer ID: ");
-                    int customerId = sc.nextInt();
-                    sc.nextLine();
+                        if (customer != null && customer.validatePassword(inputPassword)) { // !=null
+                            System.out.println("Login successful!");
+                            int innerChoice;
+                            do {
+                                System.out.println("------------------------------------");
+                                System.out.println("1. See available products");
+                                System.out.println("2. Buy a product");
+                                System.out.println("3. Print invoice");
+                                System.out.println("4. Credit balance");
+                                System.out.println("5. Previous invoice's");
+                                System.out.println("0. Logout");
+                                System.out.println("Enter your choice: ");
 
-                    System.out.print("Enter your password: ");
-                    String password = sc.nextLine();
+                                innerChoice = sc.nextInt();
+                                sc.nextLine();
 
-                    Customer1 customer = Customer1.getCustomerById(customerId);
+                                switch (innerChoice) {
+                                    case 1:
+                                        Product1.displayAllProducts();
+                                        break;
 
-                    if (customer != null && customer.validatePassword(password)) {
-                        System.out.println("Login successful!");
-                        int innerChoice;
-                        do {
-                            System.out.println("------------------------------------");
-                            System.out.println("1. See available products");
-                            System.out.println("2. Buy a product");
-                            System.out.println("3. Print invoice");
-                            System.out.println("4. Credit balance");
-                            System.out.println("5. Previous invoice's");
-                            System.out.println("0. Logout");
-                            System.out.println("Enter your choice: ");
-                            innerChoice = sc.nextInt();
-                            sc.nextLine(); // Consume newline left-over
+                                    case 2:
+                                        Product1.displayAllProducts();
+                                        System.out.println("Enter product name:");
+                                        String userInput = sc.next();
 
-                            switch (innerChoice) {
-                                case 1:
-                                    Product1.displayAllProducts();
-                                    break;
-                                case 2:
-                                    System.out.println("Select a product to order:");
-                                    System.out.println("1. " + prd1.getOrderName());
-                                    System.out.println("2. " + prd2.getOrderName());
-                                    System.out.println("Enter your choice: ");
-                                    int productChoice = sc.nextInt();
-                                    sc.nextLine(); // Consume newline left-over
-                                    Product1 selectedProduct;
-                                    switch (productChoice) {
-                                        case 1:
-                                            selectedProduct = prd1;
-                                            break;
-                                        case 2:
-                                            selectedProduct = prd2;
-                                            break;
-                                        default:
-                                            System.out.println("Invalid product choice.");
-                                            continue;
-                                    }
-                                    System.out.println("Enter quantity: ");
-                                    int quantity = sc.nextInt();
-                                    sc.nextLine(); // Consume newline left-over
-                                    if (order == null) {
-                                        order = new Order1(); // Create a new order instance
-                                    }
-                                    order.placeOrder(customer, selectedProduct, quantity);
-                                    break;
+                                        System.out.println("Enter Quantity");
 
-                                case 3:
-                                    if (order != null && order.getInvoice() != null) {
-                                        order.getInvoice().generateInvoice();
-                                    } else {
-                                        System.out.println("No orders placed yet.");
-                                    }
-                                    break;
+                                        order = new Order1();
 
-                                case 4:
-                                    System.out.println("Your available balance is: "+ customer.getCredit());
-                                    break;
+                                        int quantity = sc.nextInt();
+                                        if (order.placeOrder(customer, userInput, quantity)) {
+                                            System.out.println("Order placed successfully");
+                                        }
 
+                                    case 3:
+                                        if (order != null && order.getInvoice() != null) {
+                                            order.getInvoice().createInvoice();
+                                        } else {
+                                            System.out.println("No orders placed yet.");
+                                        }
+                                        break;
 
-                                case 5:
-                                    Invoice1.displayAllInvoices();
-                                    break;
+                                    case 4:
+                                        System.out.println("Your available balance is: " + customer.getCredit());
+                                        break;
 
-                                case 0:
-                                    System.out.println("Logging out");
-                                    order = null; // Reset order on logout
-                                    break;
+                                    case 5:
+                                        Invoice1.displayAllInvoices();
+                                        break;
 
-                                default:
-                                    System.out.println("Invalid choice. Please try again.");
-                            }
-                        } while (innerChoice != 0);
-                    } else {
-                        System.out.println("Invalid customer ID or password.");
-                    }
-                    break;
-                case 0:
-                    System.out.println("Exiting program...");
-                    sc.close();
-                    return;
+                                    case 0:
+                                        System.out.println("Logging out");
+                                        order = null;
+                                        break;
 
-                default:
-                    System.out.println("Invalid choice. Please try again.");
+                                    default:
+                                        System.out.println("Invalid choice. Please try again.");
+                                }
+                            } while (innerChoice != 0);
+                        } else {
+                            System.out.println("Invalid customer ID or password.");
+                        }
+                        break;
+
+                    case 3:
+                        Product1.displayAllProducts();
+                        break;
+
+                    case 0:
+                        System.out.println("Exiting program...");
+                        sc.close();
+                        return;
+
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
             }
+        }catch (EmailAlreadyExistsException e){
+            System.out.println(e);
+        } catch (CustomerNotFoundException e){
+            System.out.println(e);
+        } catch (Exception e){
+            System.out.println(e);
         }
     }
 }
